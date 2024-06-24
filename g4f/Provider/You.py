@@ -4,6 +4,7 @@ import re
 import json
 import base64
 import uuid
+from tempmail import EMail
 
 from ..typing import AsyncResult, Messages, ImageType, Cookies
 from .base_provider import AsyncGeneratorProvider, ProviderModelMixin
@@ -12,6 +13,7 @@ from ..image import ImageResponse, ImagePreview, EXTENSIONS_MAP, to_bytes, is_ac
 from ..requests import StreamSession, FormData, raise_for_status
 from .you.har_file import get_telemetry_ids
 from .. import debug
+
 
 class You(AsyncGeneratorProvider, ProviderModelMixin):
     label = "You.com"
@@ -31,6 +33,7 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         "claude-2",
         "claude-3-opus",
         "claude-3-sonnet",
+        "claude-3-5-sonnet",
         "claude-3-haiku",
         "gemini-pro",
         "gemini-1-5-pro",
@@ -51,16 +54,16 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
 
     @classmethod
     async def create_async_generator(
-        cls,
-        model: str,
-        messages: Messages,
-        stream: bool = True,
-        image: ImageType = None,
-        image_name: str = None,
-        proxy: str = None,
-        timeout: int = 240,
-        chat_mode: str = "default",
-        **kwargs,
+            cls,
+            model: str,
+            messages: Messages,
+            stream: bool = True,
+            image: ImageType = None,
+            image_name: str = None,
+            proxy: str = None,
+            timeout: int = 240,
+            chat_mode: str = "default",
+            **kwargs,
     ) -> AsyncResult:
         if image is not None or model == cls.default_vision_model:
             chat_mode = "agent"
@@ -73,9 +76,9 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
             chat_mode = "custom"
             model = cls.get_model(model)
         async with StreamSession(
-            proxy=proxy,
-            impersonate="chrome",
-            timeout=(30, timeout)
+                proxy=proxy,
+                impersonate="chrome",
+                timeout=(30, timeout)
         ) as session:
             cookies = await cls.get_cookies(session) if chat_mode != "default" else None
             upload = ""
@@ -104,14 +107,14 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
             if chat_mode == "custom":
                 if debug.logging:
                     print(f"You model: {model}")
-                params["selectedAiModel"] = model.replace("-", "_")
+                data["selectedAiModel"] = model.replace("-", "_")
 
             async with (session.post if chat_mode == "default" else session.get)(
-                f"{cls.url}/api/streamingSearch",
-                data=data if chat_mode == "default" else None,
-                params=params if chat_mode == "default" else data,
-                headers=headers,
-                cookies=cookies
+                    f"{cls.url}/api/streamingSearch",
+                    data=data if chat_mode == "default" else None,
+                    params=data if chat_mode == "default" else data,
+                    headers=headers,
+                    cookies=cookies
             ) as response:
                 await raise_for_status(response)
                 async for line in response.iter_lines():
@@ -131,15 +134,15 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                                     else:
                                         yield ImageResponse(match.group(2), match.group(1))
                                 else:
-                                    yield data["t"]          
+                                    yield data["t"]
                             else:
-                                yield data["t"]               
+                                yield data["t"]
 
     @classmethod
     async def upload_file(cls, client: StreamSession, cookies: Cookies, file: bytes, filename: str = None) -> dict:
         async with client.get(
-            f"{cls.url}/api/get_nonce",
-            cookies=cookies,
+                f"{cls.url}/api/get_nonce",
+                cookies=cookies,
         ) as response:
             await raise_for_status(response)
             upload_nonce = await response.text()
@@ -148,12 +151,12 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         filename = f"image.{EXTENSIONS_MAP[content_type]}" if filename is None else filename
         data.add_field('file', file, content_type=content_type, filename=filename)
         async with client.post(
-            f"{cls.url}/api/upload",
-            data=data,
-            headers={
-                "X-Upload-Nonce": upload_nonce,
-            },
-            cookies=cookies
+                f"{cls.url}/api/upload",
+                data=data,
+                headers={
+                    "X-Upload-Nonce": upload_nonce,
+                },
+                cookies=cookies
         ) as response:
             await raise_for_status(response)
             result = await response.json()
@@ -167,21 +170,21 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
             cls._cookies = await cls.create_cookies(client)
             cls._cookies_used = 0
         cls._cookies_used += 1
-        return cls._cookies        
+        return cls._cookies
 
     @classmethod
     def get_sdk(cls) -> str:
         return base64.standard_b64encode(json.dumps({
-            "event_id":f"event-id-{str(uuid.uuid4())}",
-            "app_session_id":f"app-session-id-{str(uuid.uuid4())}",
-            "persistent_id":f"persistent-id-{uuid.uuid4()}",
-            "client_sent_at":"","timezone":"",
-            "stytch_user_id":f"user-live-{uuid.uuid4()}",
-            "stytch_session_id":f"session-live-{uuid.uuid4()}",
-            "app":{"identifier":"you.com"},
-            "sdk":{"identifier":"Stytch.js Javascript SDK","version":"3.3.0"
-        }}).encode()).decode()
+            "event_id": f"event-id-{str(uuid.uuid4())}",
+            "app_session_id": f"app-session-id-{str(uuid.uuid4())}",
+            "persistent_id": f"persistent-id-{uuid.uuid4()}",
+            "client_sent_at": "",
+            "timezone": "",
+            "app": {"identifier": "you.com"},
+            "sdk": {"identifier": "Stytch.js Javascript SDK", "version": "4.7.7"
+                    }}).encode()).decode()
 
+    @staticmethod
     def get_auth() -> str:
         auth_uuid = "507a52ad-7e69-496b-aee0-1c9863c7c819"
         auth_token = f"public-token-live-{auth_uuid}:public-token-live-{auth_uuid}"
@@ -196,8 +199,10 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         telemetry_id = cls._telemetry_ids.pop()
         if debug.logging:
             print(f"Use telemetry_id: {telemetry_id}")
+
+        email = EMail(username=user_uuid)
         async with client.post(
-            "https://web.stytch.com/sdk/v1/passwords",
+            "https://web.stytch.com/sdk/v1/otps/email/login_or_create",
             headers={
                 "Authorization": cls.get_auth(),
                 "X-SDK-Client": cls.get_sdk(),
@@ -206,11 +211,35 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                 "Referer": "https://you.com/"
             },
             json={
-                "dfp_telemetry_id": telemetry_id,
-                "email": f"{user_uuid}@gmail.com",
-                "password": f"{user_uuid}#{user_uuid}",
-                "session_duration_minutes": 129600
+                "email": email.address,
+                "expiration_minutes": 10,
+                "login_template_id": "otp_login",
+                "signup_template_id": "otp_sign_up",
             }
+        ) as response:
+            await raise_for_status(response)
+            otp = (await response.json())["data"]
+
+        message = email.wait_for_message(filter=lambda m: "Your one-time login code for You.com" in m.subject)
+        otp_code = re.search(r"(\d{6})", message.text_body).group(1)
+        if not otp_code:
+            raise ValueError("OTP code not found")
+
+        async with client.post(
+                "https://web.stytch.com/sdk/v1/otps/authenticate",
+                headers={
+                    "Authorization": cls.get_auth(),
+                    "X-SDK-Client": cls.get_sdk(),
+                    "X-SDK-Parent-Host": cls.url,
+                    "Origin": "https://you.com",
+                    "Referer": "https://you.com/"
+                },
+                json={
+                    "dfp_telemetry_id": telemetry_id,
+                    "method_id": otp["method_id"],
+                    "session_duration_minutes": 129600,
+                    "token": otp_code
+                }
         ) as response:
             await raise_for_status(response)
             session = (await response.json())["data"]

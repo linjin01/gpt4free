@@ -197,6 +197,8 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
             print(f"Use telemetry_id: {telemetry_id}")
 
         email = EMail(username=user_uuid)
+        if debug.logging:
+            print(f"Use email: {email.address}")
         async with client.post(
             "https://web.stytch.com/sdk/v1/otps/email/login_or_create",
             headers={
@@ -220,7 +222,8 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         otp_code = re.search(r"(\d{6})", message.text_body).group(1)
         if not otp_code:
             raise ValueError("OTP code not found")
-
+        if debug.logging:
+            print(f"Use OTP code: {otp_code}")
         async with client.post(
                 "https://web.stytch.com/sdk/v1/otps/authenticate",
                 headers={

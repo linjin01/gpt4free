@@ -19,6 +19,7 @@ class PerplexityLabs(AsyncGeneratorProvider, ProviderModelMixin):
         "llama-3-sonar-large-32k-online", "llama-3-sonar-small-32k-online",
         "llama-3-sonar-large-32k-chat", "llama-3-sonar-small-32k-chat",
         "llama-3-8b-instruct", "llama-3-70b-instruct",
+        "gemma-2-9b-it", "gemma-2-27b-it",
         "mixtral-8x7b-instruct",
         "nemotron-4-340b-instruct",
         "related"

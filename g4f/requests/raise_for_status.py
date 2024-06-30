@@ -20,7 +20,7 @@ def is_openai(text: str) -> bool:
 async def raise_for_status_async(response: Union[StreamResponse, ClientResponse], message: str = None):
     if response.status in (429, 402):
         if debug.logging:
-            print(f"Rate limit reached: {response.status}: {response.text}")
+            print(f"Rate limit reached: {response.status}: {response.text()}")
         raise RateLimitError(f"Response {response.status}: Rate limit reached")
     message = await response.text() if not response.ok and message is None else message
     if response.status == 403 and is_cloudflare(message):

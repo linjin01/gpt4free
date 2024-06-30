@@ -100,10 +100,6 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                 "conversationTurnId": str(uuid.uuid4()),
                 "chatId": str(uuid.uuid4()),
             }
-            params = {
-                "userFiles": upload,
-                "selectedChatMode": chat_mode,
-            }
             if chat_mode == "custom":
                 if debug.logging:
                     print(f"You model: {model}")

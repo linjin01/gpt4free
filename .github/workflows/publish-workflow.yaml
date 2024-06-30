@@ -2,8 +2,6 @@ name: Publish Docker image
 
 on:
   push:
-    tags:
-      - '**'
 
 jobs:
   publish:
@@ -22,6 +20,12 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=sha-
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3

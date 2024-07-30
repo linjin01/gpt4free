@@ -8,7 +8,7 @@ class DeepInfra(Openai):
     label = "DeepInfra"
     url = "https://deepinfra.com"
     working = True
-    needs_auth = True
+    needs_auth = False
     supports_stream = True
     supports_message_history = True
     default_model = "meta-llama/Meta-Llama-3-70B-Instruct"
@@ -32,8 +32,8 @@ class DeepInfra(Openai):
         messages: Messages,
         stream: bool,
         api_base: str = "https://api.deepinfra.com/v1/openai",
-        temperature: float = 0.7,
-        max_tokens: int = 1028,
+        temperature: float = None,
+        max_tokens: int = None,
         **kwargs
     ) -> AsyncResult:
         headers = {
@@ -46,8 +46,8 @@ class DeepInfra(Openai):
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Site': 'same-site',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-            'X-Deepinfra-Source': 'web-embed',
-            'sec-ch-ua': '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
+            'X-Deepinfra-Source': 'web-page',
+            'sec-ch-ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"macOS"',
         }

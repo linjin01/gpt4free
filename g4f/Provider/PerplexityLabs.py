@@ -16,13 +16,12 @@ class PerplexityLabs(AsyncGeneratorProvider, ProviderModelMixin):
     working = True
     default_model = "mixtral-8x7b-instruct"
     models = [
-        "llama-3-sonar-large-32k-online", "llama-3-sonar-small-32k-online",
-        "llama-3-sonar-large-32k-chat", "llama-3-sonar-small-32k-chat",
-        "llama-3-8b-instruct", "llama-3-70b-instruct",
+        "llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-small-128k-online",
+        "llama-3.1-sonar-large-128k-chat", "llama-3.1-sonar-small-128k-chat",
+        "llama-3.1-8b-instruct", "llama-3.1-70b-instruct",
         "gemma-2-9b-it", "gemma-2-27b-it",
-        "mixtral-8x7b-instruct",
         "nemotron-4-340b-instruct",
-        "related"
+        "mixtral-8x7b-instruct",
     ]
 
     @classmethod

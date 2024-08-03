@@ -24,11 +24,6 @@ class PerplexityLabs(AsyncGeneratorProvider, ProviderModelMixin):
         "nemotron-4-340b-instruct",
         "related"
     ]
-    model_aliases = {
-        "mistralai/Mixtral-8x7B-Instruct-v0.1": "mixtral-8x7b-instruct",
-        "meta-llama/Meta-Llama-3-70B-Instruct": "llama-3-70b-instruct",
-        "meta-llama/Meta-Llama-3-8B-Instruct": "llama-3-8b-instruct"
-    }
 
     @classmethod
     async def create_async_generator(

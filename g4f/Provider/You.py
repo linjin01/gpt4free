@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import re
 import json
 import base64
@@ -30,21 +31,22 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         "gpt-4o",
         "gpt-4-turbo",
         "gpt-4",
-        "claude-3.5-sonnet",
         "claude-3-opus",
         "claude-3-sonnet",
         "claude-3-5-sonnet",
         "claude-3-haiku",
         "claude-2",
-        "llama-3.1-70b",
-        "llama-3",
+        "llama3.1-405b"
+        "llama3.1-70b",
+        "llama3",
+        "mistral-large-2"
         "gemini-1-5-flash",
         "gemini-1-5-pro",
-        "gemini-1-0-pro",
+        "gemini-pro",
         "databricks-dbrx-instruct",
         "command-r",
         "command-r-plus",
-        "dolphin-2.5",
+        "solar-1-mini",
         default_vision_model,
         *image_models
     ]
@@ -93,17 +95,28 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                 "Referer": f"{cls.url}/search?fromSearchBar=true&tbm=youchat",
             }
             data = {
-                "userFiles": upload,
                 "q": format_prompt(messages),
+                "page": 1,
+                "count": 10,
+                "safeSearch": "off",
+                "mkt": "en-GB",
+                "incognito": True,
                 "domain": "youchat",
+                "use_personalization_extraction": True,
                 "selectedChatMode": chat_mode,
                 "conversationTurnId": str(uuid.uuid4()),
                 "chatId": str(uuid.uuid4()),
+                "chat": "[]"
             }
+            data["queryTraceId"] = data["chatId"]
+            data[
+                "traceId"] = f"{data['chatId']}|{data['conversationTurnId']}|{datetime.datetime.utcnow().isoformat(timespec='milliseconds')}Z"
+            if upload:
+                data["userFiles"] = upload
             if chat_mode == "custom":
                 if debug.logging:
                     print(f"You model: {model}")
-                data["selectedAiModel"] = model.replace("-", "_")
+                data["selectedAiModel"] = model.replace("-", "_").replace(".", "_")
 
             async with (session.post if chat_mode == "default" else session.get)(
                     f"{cls.url}/api/streamingSearch",
@@ -200,20 +213,20 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         if debug.logging:
             print(f"Use email: {email.address}")
         async with client.post(
-            "https://web.stytch.com/sdk/v1/otps/email/login_or_create",
-            headers={
-                "Authorization": cls.get_auth(),
-                "X-SDK-Client": cls.get_sdk(),
-                "X-SDK-Parent-Host": cls.url,
-                "Origin": "https://you.com",
-                "Referer": "https://you.com/"
-            },
-            json={
-                "email": email.address,
-                "expiration_minutes": 10,
-                "login_template_id": "otp_login",
-                "signup_template_id": "otp_sign_up",
-            }
+                "https://web.stytch.com/sdk/v1/otps/email/login_or_create",
+                headers={
+                    "Authorization": cls.get_auth(),
+                    "X-SDK-Client": cls.get_sdk(),
+                    "X-SDK-Parent-Host": cls.url,
+                    "Origin": "https://you.com",
+                    "Referer": "https://you.com/"
+                },
+                json={
+                    "email": email.address,
+                    "expiration_minutes": 10,
+                    "login_template_id": "otp_login",
+                    "signup_template_id": "otp_sign_up",
+                }
         ) as response:
             await raise_for_status(response)
             otp = (await response.json())["data"]

@@ -549,8 +549,8 @@ class ModelUtils:
         'claude-3-5-sonnet': claude_3_5_sonnet,
         'claude-3-haiku': claude_3_haiku,
         
-        'claude-3-opus': claude_3,
-        'claude-3-5-sonnet': claude_3_5,
+        # 'claude-3-opus': claude_3,
+        # 'claude-3-5-sonnet': claude_3_5,
         
         
 

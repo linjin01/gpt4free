@@ -10,27 +10,30 @@ from .base_provider import AsyncGeneratorProvider, ProviderModelMixin
 API_URL = "https://www.perplexity.ai/socket.io/"
 WS_URL = "wss://www.perplexity.ai/socket.io/"
 
-
 class PerplexityLabs(AsyncGeneratorProvider, ProviderModelMixin):
     url = "https://labs.perplexity.ai"
     working = True
     default_model = "mixtral-8x7b-instruct"
     models = [
-        "llama-3.1-sonar-large-128k-online", "llama-3.1-sonar-small-128k-online",
-        "llama-3.1-sonar-large-128k-chat", "llama-3.1-sonar-small-128k-chat",
-        "llama-3.1-8b-instruct", "llama-3.1-70b-instruct",
-        "gemma-2-9b-it", "gemma-2-27b-it",
+        "llama-3.1-sonar-large-128k-online",
+        "llama-3.1-sonar-small-128k-online",
+        "llama-3.1-sonar-large-128k-chat",
+        "llama-3.1-sonar-small-128k-chat",
+        "llama-3.1-8b-instruct",
+        "llama-3.1-70b-instruct",
+        "gemma-2-9b-it",
+        "gemma-2-27b-it",
         "nemotron-4-340b-instruct",
-        "mixtral-8x7b-instruct",
+        "mixtral-8x7b-instruct"
     ]
 
     @classmethod
     async def create_async_generator(
-            cls,
-            model: str,
-            messages: Messages,
-            proxy: str = None,
-            **kwargs
+        cls,
+        model: str,
+        messages: Messages,
+        proxy: str = None,
+        **kwargs
     ) -> AsyncResult:
         headers = {
             "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
@@ -48,7 +51,7 @@ class PerplexityLabs(AsyncGeneratorProvider, ProviderModelMixin):
         async with StreamSession(headers=headers, proxies={"all": proxy}) as session:
             t = format(random.getrandbits(32), "08x")
             async with session.get(
-                    f"{API_URL}?EIO=4&transport=polling&t={t}"
+                f"{API_URL}?EIO=4&transport=polling&t={t}"
             ) as response:
                 await raise_for_status(response)
                 text = await response.text()
@@ -56,17 +59,17 @@ class PerplexityLabs(AsyncGeneratorProvider, ProviderModelMixin):
             sid = json.loads(text[1:])["sid"]
             post_data = '40{"jwt":"anonymous-ask-user"}'
             async with session.post(
-                    f"{API_URL}?EIO=4&transport=polling&t={t}&sid={sid}",
-                    data=post_data
+                f"{API_URL}?EIO=4&transport=polling&t={t}&sid={sid}",
+                data=post_data
             ) as response:
                 await raise_for_status(response)
                 assert await response.text() == "OK"
             async with session.ws_connect(f"{WS_URL}?EIO=4&transport=websocket&sid={sid}", autoping=False) as ws:
                 await ws.send_str("2probe")
-                assert (await ws.receive_str() == "3probe")
+                assert(await ws.receive_str() == "3probe")
                 await ws.send_str("5")
-                assert (await ws.receive_str())
-                assert (await ws.receive_str() == "6")
+                assert(await ws.receive_str())
+                assert(await ws.receive_str() == "6")
                 message_data = {
                     "version": "2.5",
                     "source": "default",

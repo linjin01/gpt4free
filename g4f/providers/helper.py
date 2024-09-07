@@ -5,6 +5,7 @@ import string
 
 from ..typing import Messages, Cookies
 
+
 def format_prompt(messages: Messages, add_special_tokens=False) -> str:
     """
     Format a series of messages into a single string, optionally adding special tokens.
@@ -24,6 +25,44 @@ def format_prompt(messages: Messages, add_special_tokens=False) -> str:
     ])
     return f"{formatted}\nAssistant:"
 
+
+def format_alternating_prompt(messages: Messages) -> Messages:
+    formatted_messages: Messages = []
+    current_role: str | None = None
+    current_content: str = ""
+    system_prompt: str | None = None
+
+    for message in messages:
+        role = message["role"]
+        content = message["content"]
+
+        if role == "system":
+            system_prompt = content
+            continue
+
+        if role != current_role:
+            if current_role is not None:
+                formatted_messages.append({"role": current_role, "content": current_content})
+            current_role = role
+            current_content = content
+        else:
+            current_content += "\n" + content
+
+    if current_role is not None:
+        formatted_messages.append({"role": current_role, "content": current_content})
+
+    if not formatted_messages or formatted_messages[0]["role"] != "user":
+        formatted_messages.insert(0, {"role": "user", "content": ""})
+
+    if system_prompt:
+        formatted_messages[0]["content"] = system_prompt + "\n" + formatted_messages[0]["content"]
+
+    if formatted_messages[-1]["role"] != "user":
+        formatted_messages.append({"role": "user", "content": ""})
+
+    return formatted_messages
+
+
 def get_random_string(length: int = 10) -> str:
     """
     Generate a random string of specified length, containing lowercase letters and digits.
@@ -39,6 +78,7 @@ def get_random_string(length: int = 10) -> str:
         for _ in range(length)
     )
 
+
 def get_random_hex(length: int = 32) -> str:
     """
     Generate a random hexadecimal string with n length.
@@ -51,6 +91,7 @@ def get_random_hex(length: int = 32) -> str:
         for _ in range(length)
     )
 
+
 def filter_none(**kwargs) -> dict:
     return {
         key: value
@@ -58,5 +99,84 @@ def filter_none(**kwargs) -> dict:
         if value is not None
     }
 
+
 def format_cookies(cookies: Cookies) -> str:
     return "; ".join([f"{k}={v}" for k, v in cookies.items()])
+
+
+first_names = [
+    # Western names
+    "Emma", "Liam", "Olivia", "Noah", "Ava", "Ethan", "Sophia", "Mason",
+    "Isabella", "William", "Mia", "James", "Charlotte", "Benjamin", "Amelia",
+    "Oliver", "Evelyn", "Elijah", "Abigail", "Lucas", "Harper", "Alexander",
+    # Hispanic names
+    "Sofia", "Mateo", "Camila", "Sebastian", "Isabella", "Diego", "Valentina",
+    "Emiliano", "Lucia", "Santiago", "Valeria", "Alejandro", "Ximena", "Leonardo",
+    # Asian names
+    "Yuki", "Hiroshi", "Mei", "Zhang", "Li", "Wei", "Soo-yun", "Ji-hun",
+    "Akira", "Hana", "Ryu", "Yuna", "Kazuki", "Eun-ji", "Kenji", "Sakura",
+    # African names
+    "Kwame", "Amara", "Chidi", "Zalika", "Tendai", "Akinyi", "Oluwaseun",
+    "Kofi", "Zuri", "Oluwadamilola", "Imani", "Nnamdi", "Thando", "Abimbola",
+    # Middle Eastern names
+    "Fatima", "Mohammed", "Zara", "Ahmed", "Layla", "Hassan", "Amira",
+    "Yusuf", "Noor", "Ali", "Rania", "Omar", "Yasmin", "Karim", "Leila",
+    # Indian names
+    "Aarav", "Priya", "Arjun", "Divya", "Ravi", "Neha", "Vikram",
+    "Aisha", "Rohan", "Anaya", "Kiran", "Aditi", "Vihaan", "Zoya", "Arnav"
+]
+
+last_names = [
+    # Western names
+    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller",
+    "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez",
+    "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin",
+    # Asian names
+    "Zhang", "Wang", "Li", "Chen", "Liu", "Yang", "Huang", "Kim", "Lee", "Park",
+    "Nakamura", "Tanaka", "Suzuki", "Sato", "Watanabe", "Takahashi", "Yamamoto",
+    # African names
+    "Okafor", "Mwangi", "Afolayan", "Okonkwo", "Nwosu", "Mensah", "Okoro",
+    "Adebayo", "Osei", "Ngozi", "Dube", "Eze", "Khumalo", "Moyo", "Nkosi",
+    # Middle Eastern names
+    "Al-Fahad", "El-Masri", "Sayegh", "Haddad", "Najjar", "Khalil", "Zidan",
+    "Abboud", "Hakim", "Saleh", "Fares", "Nassar", "Sabbagh", "Yousef",
+    # Indian names
+    "Patel", "Singh", "Kumar", "Shah", "Sharma", "Reddy", "Gupta", "Kapoor",
+    "Malhotra", "Joshi", "Chopra", "Mehra", "Verma", "Desai", "Banerjee", "Das"
+]
+
+middle_names = [
+    "Rose", "James", "Marie", "John", "Elizabeth", "Michael", "Anne", "William",
+    "Grace", "Thomas", "May", "Lee", "Jane", "Robert", "Lynn", "David", "Joy",
+    "Alexis", "Jade", "Ray", "Sky", "Quinn", "Sage", "Kai", "Wren", "Finn"
+]
+
+
+def generate_random_name():
+    first_name = random.choice(first_names)
+    last_name = random.choice(last_names)
+
+    # 30% chance to use a middle name
+    if random.random() < 0.3:
+        middle_name = random.choice(middle_names)
+        full_name = f"{first_name} {middle_name} {last_name}"
+    else:
+        full_name = f"{first_name} {last_name}"
+
+    # 50% chance to separate names with a dot
+    if random.random() < 0.5:
+        full_name = full_name.replace(" ", ".")
+    else:
+        full_name = full_name.replace(" ", "")
+
+    # 75% chance to either append a small number (1-20) or a year of birth (1950-2006)
+    if random.random() < 0.75:
+        a = random.random()
+        if a < 0.33:
+            full_name += str(random.randint(1, 20))
+        elif a < 0.66:
+            full_name += str(random.randint(1950, 2006))[2:]
+        else:
+            full_name += str(random.randint(1950, 2006))
+
+    return full_name.lower()

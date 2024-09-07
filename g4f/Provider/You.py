@@ -7,9 +7,9 @@ import base64
 import uuid
 from tempmail import EMail
 
+from ..providers.helper import format_alternating_prompt, generate_random_name
 from ..typing import AsyncResult, Messages, ImageType, Cookies
 from .base_provider import AsyncGeneratorProvider, ProviderModelMixin
-from .helper import format_prompt
 from ..image import ImageResponse, ImagePreview, EXTENSIONS_MAP, to_bytes, is_accepted_format
 from ..requests import StreamSession, FormData, raise_for_status
 from .you.har_file import get_telemetry_ids
@@ -94,8 +94,9 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                 "Accept": "text/event-stream",
                 "Referer": f"{cls.url}/search?fromSearchBar=true&tbm=youchat",
             }
+            chat, query = cls.convert_messages(messages)
             data = {
-                "q": format_prompt(messages),
+                "q": query,
                 "page": 1,
                 "count": 10,
                 "safeSearch": "off",
@@ -106,11 +107,13 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                 "selectedChatMode": chat_mode,
                 "conversationTurnId": str(uuid.uuid4()),
                 "chatId": str(uuid.uuid4()),
-                "chat": "[]"
+                "chat": json.dumps(chat),
             }
             data["queryTraceId"] = data["chatId"]
             data[
                 "traceId"] = f"{data['chatId']}|{data['conversationTurnId']}|{datetime.datetime.utcnow().isoformat(timespec='milliseconds')}Z"
+            if len(chat) > 0:
+                data["pastChatLength"] = len(chat)
             if upload:
                 data["userFiles"] = upload
             if chat_mode == "custom":
@@ -130,7 +133,7 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                     if line.startswith(b'event: '):
                         event = line[7:].decode()
                     elif line.startswith(b'data: '):
-                        if event in ["youChatUpdate", "youChatToken"]:
+                        if event in ["youChatUpdate", "youChatToken", "youChatModeLimits"]:
                             data = json.loads(line[6:])
                         if event == "youChatToken" and event in data and data[event]:
                             yield data[event]
@@ -146,6 +149,10 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                                     yield data["t"]
                             else:
                                 yield data["t"]
+                        elif event == "youChatModeLimits":
+                            if debug.logging:
+                                print(
+                                    f"Max premium calls: {data.get('max_calls')}, used calls: {data.get('used_calls')}")
 
     @classmethod
     async def upload_file(cls, client: StreamSession, cookies: Cookies, file: bytes, filename: str = None) -> dict:
@@ -204,7 +211,7 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
     async def create_cookies(cls, client: StreamSession) -> Cookies:
         if not cls._telemetry_ids:
             cls._telemetry_ids = await get_telemetry_ids()
-        user_uuid = str(uuid.uuid4())
+        user_uuid = generate_random_name()
         telemetry_id = cls._telemetry_ids.pop()
         if debug.logging:
             print(f"Use telemetry_id: {telemetry_id}")
@@ -262,3 +269,16 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
             'ydc_stytch_session': session["session_token"],
             'ydc_stytch_session_jwt': session["session_jwt"],
         }
+
+    @classmethod
+    def convert_messages(cls, messages: Messages) -> (list[dict[str, str]], str):
+        formatted_messages = format_alternating_prompt(messages)
+        query = formatted_messages.pop()["content"]
+        return [
+            {
+                "question": message["content"],
+                "answer": formatted_messages[i + 1]["content"]
+            }
+            for i, message in enumerate(formatted_messages)
+            if message["role"] == "user"
+        ], query

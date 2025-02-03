@@ -3,5 +3,6 @@ aiohttp
 brotli
 pycryptodome
 nest_asyncio
+beautifulsoup4
 temp-mails
 websocket-client==1.7.0

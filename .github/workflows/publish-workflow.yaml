@@ -54,12 +54,11 @@ jobs:
           images: |
             ghcr.io/${{ github.repository }}
           tags: |
-            type=schedule
-            type=ref,event=branch
-            type=ref,event=tag
-            type=ref,event=pr
-            type=sha,prefix=sha-
-            suffix=-slim
+            type=schedule,suffix=-slim
+            type=ref,event=branch,suffix=-slim
+            type=ref,event=tag,suffix=-slim
+            type=ref,event=pr,suffix=-slim
+            type=sha,prefix=sha-,suffix=-slim
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3

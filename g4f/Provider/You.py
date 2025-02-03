@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import re
 import json
 import base64
 import uuid
-from tempmail import EMail
+from temp_mails import Inboxes_com
+from bs4 import BeautifulSoup
 
 from ..providers.helper import format_alternating_prompt, generate_random_name
 from ..typing import AsyncResult, Messages, ImageType, Cookies
@@ -216,9 +218,9 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         if debug.logging:
             print(f"Use telemetry_id: {telemetry_id}")
 
-        email = EMail(username=user_uuid)
+        email = Inboxes_com(name=user_uuid)
         if debug.logging:
-            print(f"Use email: {email.address}")
+            print(f"Use email: {email.email}")
         async with client.post(
                 "https://web.stytch.com/sdk/v1/otps/email/login_or_create",
                 headers={
@@ -229,7 +231,7 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
                     "Referer": "https://you.com/"
                 },
                 json={
-                    "email": email.address,
+                    "email": email.email,
                     "expiration_minutes": 10,
                     "login_template_id": "otp_login",
                     "signup_template_id": "otp_sign_up",
@@ -237,9 +239,34 @@ class You(AsyncGeneratorProvider, ProviderModelMixin):
         ) as response:
             await raise_for_status(response)
             otp = (await response.json())["data"]
-
-        message = email.wait_for_message(filter=lambda m: "Your one-time login code for You.com" in m.subject)
-        otp_code = re.search(r"(\d{6})", message.text_body).group(1)
+            if debug.logging:
+                print(f"Got OTP: {otp}")
+        # Wait for OTP email with timeout
+        start_time = datetime.datetime.now()
+        message = None
+        while True:
+            if (datetime.datetime.now() - start_time).total_seconds() > 60:
+                raise TimeoutError("Did not receive OTP email within 60 seconds")
+            
+            # Check inbox
+            inbox = email.get_inbox()
+            for msg in inbox:
+                if "Your one-time login code for You.com" in msg['subject']:
+                    if debug.logging:
+                        print(f"Found OTP email: {msg}")
+                    message = msg
+                    break
+            if message:
+                break
+                
+            # Wait before checking again
+            await asyncio.sleep(0.5)
+        content = email.get_mail_content(message['id'])
+        soup = BeautifulSoup(content['content'], 'html.parser')
+        content_text = soup.get_text()
+        if debug.logging:
+            print(f"Use email message: {message=} {content=} {content_text=}")
+        otp_code = re.search(r"(\d{6})", content_text).group(1)
         if not otp_code:
             raise ValueError("OTP code not found")
         if debug.logging:

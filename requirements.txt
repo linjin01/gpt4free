@@ -21,4 +21,5 @@ pywebview
 plyer
 cryptography
 nodriver
-tempmail-python
+temp-mails
+websocket-client==1.7.0

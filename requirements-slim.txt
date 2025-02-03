@@ -16,3 +16,5 @@ aiohttp_socks
 cryptography
 python-multipart
 pypdf2
+temp-mails
+websocket-client==1.7.0

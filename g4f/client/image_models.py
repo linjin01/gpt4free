@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-from .types import Client, ImageProvider
-
-from ..Provider.BingCreateImages import BingCreateImages
-from ..Provider.needs_auth import Gemini, OpenaiChat
-from ..Provider.You import You
+from ..models import ModelUtils
+from ..Provider import ProviderUtils
 
 class ImageModels():
-    gemini = Gemini
-    openai = OpenaiChat
-    you = You
-
-    def __init__(self, client: Client) -> None:
+    def __init__(self, client):
         self.client = client
-        self.default = BingCreateImages(proxy=self.client.get_proxy())
 
-    def get(self, name: str, default: ImageProvider = None) -> ImageProvider:
-        return getattr(self, name) if hasattr(self, name) else default or self.default
+    def get(self, name, default=None):
+        if name in ModelUtils.convert:
+            return ModelUtils.convert[name].best_provider
+        if name in ProviderUtils.convert:
+            return ProviderUtils.convert[name]
+        return default

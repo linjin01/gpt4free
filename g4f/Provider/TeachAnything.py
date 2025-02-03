@@ -13,7 +13,18 @@ class TeachAnything(AsyncGeneratorProvider, ProviderModelMixin):
     url = "https://www.teach-anything.com"
     api_endpoint = "/api/generate"
     working = True
-    default_model = "llama-3-70b-instruct"
+    default_model = "llama-3.1-70b"
+    models = [default_model]
+
+    @classmethod
+    def get_model(cls, model: str) -> str:
+        if model in cls.models:
+            return model
+        elif model in cls.model_aliases:
+            return cls.model_aliases[model]
+        else:
+            return cls.default_model
+
 
     @classmethod
     async def create_async_generator(
@@ -24,6 +35,7 @@ class TeachAnything(AsyncGeneratorProvider, ProviderModelMixin):
         **kwargs: Any
     ) -> AsyncResult:
         headers = cls._get_headers()
+        model = cls.get_model(model)
         
         async with ClientSession(headers=headers) as session:
             prompt = format_prompt(messages)
@@ -38,25 +50,41 @@ class TeachAnything(AsyncGeneratorProvider, ProviderModelMixin):
                 timeout=timeout
             ) as response:
                 response.raise_for_status()
+                buffer = b""
                 async for chunk in response.content.iter_any():
-                    if chunk:
-                        yield chunk.decode()
+                    buffer += chunk
+                    try:
+                        decoded = buffer.decode('utf-8')
+                        yield decoded
+                        buffer = b""
+                    except UnicodeDecodeError:
+                        # If we can't decode, we'll wait for more data
+                        continue
+                
+                # Handle any remaining data in the buffer
+                if buffer:
+                    try:
+                        yield buffer.decode('utf-8', errors='replace')
+                    except Exception as e:
+                        print(f"Error decoding final buffer: {e}")
 
     @staticmethod
     def _get_headers() -> Dict[str, str]:
         return {
             "accept": "*/*",
             "accept-language": "en-US,en;q=0.9",
+            "cache-control": "no-cache",
             "content-type": "application/json",
             "dnt": "1",
             "origin": "https://www.teach-anything.com",
+            "pragma": "no-cache",
             "priority": "u=1, i",
             "referer": "https://www.teach-anything.com/",
-            "sec-ch-ua": '"Not/A)Brand";v="8", "Chromium";v="126"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Linux"',
+            "sec-ch-us": '"Not?A_Brand";v="99", "Chromium";v="130"',
+            "sec-ch-us-mobile": "?0",
+            "sec-ch-us-platform": '"Linux"',
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
-            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+            "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
         }

@@ -4,6 +4,26 @@ on:
   push:
 
 jobs:
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+        cache: 'pip'
+    - name: Install requirements
+      run: |
+        pip install fastapi uvicorn python-multipart
+        pip install -r requirements-min.txt
+    - name: Generate openapi.json
+      run: |
+        python -m etc.tool.openapi
+    - uses: actions/upload-artifact@v4
+      with:
+        name: openapi
+        path: openapi.json
   publish:
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +47,20 @@ jobs:
             type=ref,event=pr
             type=sha,prefix=sha-
 
+      - name: Get metadata for Docker (slim)
+        id: metadata-slim
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=sha-
+            suffix=-slim
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -34,16 +68,30 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
+      - name: Build and push image (amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+          build-args: |
+            G4F_VERSION=${{ github.ref_name }}
+
+      - name: Build and push image (slim)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.metadata.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+          tags: ${{ steps.metadata-slim.outputs.tags }}
+          labels: ${{ steps.metadata-slim.outputs.labels }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-slim
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-slim,mode=max
           build-args: |
             G4F_VERSION=${{ github.ref_name }}
